@@ -1,0 +1,99 @@
+%%
+% Parameter Estimation of a DC Motor Control System
+clear
+close all
+
+%%
+% Defining the real model
+J = 0.001; % Nms^2/rad
+b = 0.268; % Nms/rad
+Ra = 1.36; % Ohm
+La = 3.6; % mH
+Km = 0.838; % Nm/A
+Kb = Km;
+
+t = linspace(0,25,1000); % s
+v_a = sin((pi/3)*t);
+
+k1 = Km/(J*La);
+k2 = (J*Ra + b*La)/(J*La);
+k3 = Kb*Km/(J*La);
+
+s = tf('s');
+Gs = k1/(s^2 + k2*s + k3);
+
+y = lsim(Gs, v_a, t);
+
+figure
+plot(t, v_a, 'r--', t, y, 'b', 'LineWidth', 1.5);
+legend('Input (u)', 'Output (y)');
+xlabel('Time (s)');
+ylabel('Amplitude');
+title('System Response');
+grid on;
+
+%%
+% Part (a): defining the parametric model with k1, k2 and k3 unknown
+
+lambda = 5*pi/3;
+
+Filter = 1/(s + lambda)^2;
+
+accel_filtered = (s^2)*Filter;
+vel_filtered   = (s)*Filter;
+pos_filtered   = Filter;
+
+phi1 = lsim(accel_filtered, y, t);
+phi2 = lsim(vel_filtered, y, t);
+phi3 = lsim(pos_filtered, y, t);
+
+phi = [phi1, phi2, phi3];
+z = lsim(Filter, v_a, t);
+
+figure;
+subplot(2,1,1);
+plot(t, z, 'k', 'LineWidth', 1.5);
+title('Signal z'); grid on;
+
+subplot(2,1,2);
+plot(t, phi);
+legend('\phi_1 (Accel.)', '\phi_2 (Vel.)', '\phi_3 (Pos.)');
+title('Parameters \phi'); grid on;
+xlabel('Time (s)');
+
+phi1 = phi;
+
+%%
+% Least squares method
+sum1 = zeros(3,3);
+sum2 = zeros(1,3);
+rho_estimated = zeros(size(t,2),3);
+
+for i = 10:size(t,2)
+    sum1 = sum1 + phi(i,:)' * phi(i,:);
+    sum2 = sum2 + z(i).*phi(i,:);
+    rho_estimated(i,:) = sum2 / sum1;
+end
+
+k1_estimated = (1./rho_estimated(:,1));
+k2_estimated = (rho_estimated(:,2)./rho_estimated(:,1));
+k3_estimated = (rho_estimated(:,3)./rho_estimated(:,1));
+km_estimated = k3_estimated / k1_estimated;
+
+subplot(3, 1, 1);
+plot(t, k1_estimated, 'r', 'LineWidth', 2); hold on;
+yline(k1, 'k--', 'Real: 232.7778', 'LineWidth', 1.5);
+title('Estimated k1 identification');
+grid on; ylabel('kg');
+
+subplot(3, 1, 2);
+plot(t, k2_estimated, 'g', 'LineWidth', 2); hold on;
+yline(k2, 'k--', 'Real: 268.3778', 'LineWidth', 1.5);
+title('Estimated k2 identification');
+grid on; ylabel('N.s/m');
+
+subplot(3, 1, 3);
+plot(t, k3_estimated, 'b', 'LineWidth', 2); hold on;
+yline(k3, 'k--', 'Real: 195.0678', 'LineWidth', 1.5);
+title('Estimated k3 identification');
+grid on; ylabel('N/m'); xlabel('Time (s)');
