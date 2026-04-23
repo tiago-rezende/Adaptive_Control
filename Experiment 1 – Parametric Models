@@ -1,0 +1,84 @@
+%%
+% Experiment 1 – Parametric Models
+clear
+close all
+
+%%
+% Defining the real system model
+m = 100; % kg
+f = 0.15; % kg/s
+k = 7; % kg/s^2
+
+t = linspace(0,25,1000); % s
+u_t = 1 + cos((pi/3)*t);
+
+s = tf('s');
+Gs = 1 / (m*s^2 + f*s + k);
+
+y = lsim(Gs, u_t, t);
+
+figure
+plot(t, u_t, 'r--', t, y, 'b', 'LineWidth', 1.5);
+legend('Input (u)', 'Output (y)');
+xlabel('Time (s)');
+ylabel('Amplitude');
+title('System Response');
+grid on;
+
+%%
+% Part (a): Parametric model with unknown m, k, and f
+
+lambda = 1; % 5*pi/3;
+
+Filter = 1 / (s + lambda)^2;
+
+accel_filtered = (s^2) * Filter;
+vel_filtered   = s * Filter;
+pos_filtered   = Filter;
+
+phi1 = lsim(accel_filtered, y, t);
+phi2 = lsim(vel_filtered, y, t);
+phi3 = lsim(pos_filtered, y, t);
+
+phi = [phi1, phi2, phi3];
+
+z = lsim(Filter, u_t, t);
+
+figure;
+subplot(2,1,1);
+plot(t, z, 'k', 'LineWidth', 1.5);
+title('Signal z');
+grid on;
+
+subplot(2,1,2);
+plot(t, phi);
+legend('\phi_1 (Acceleration)', '\phi_2 (Velocity)', '\phi_3 (Position)');
+title('Parameters \phi');
+grid on;
+xlabel('Time (s)');
+
+
+%%
+% Part (b): Parametric model with known mass (m = 100)
+
+u_f     = lsim(Filter, u_t, t);
+accel_f = lsim(accel_filtered, y, t);
+vel_f   = lsim(vel_filtered, y, t);
+pos_f   = lsim(pos_filtered, y, t);
+
+z = u_f - m * accel_f;
+phi = [vel_f, pos_f];
+
+figure;
+
+subplot(2,1,1);
+plot(t, z, 'k', 'LineWidth', 1.5);
+title('Signal z');
+grid on;
+
+subplot(2,1,2);
+plot(t, phi);
+legend('\phi_2 (Velocity)', '\phi_3 (Position)');
+title('Parameters \phi');
+grid on;
+xlabel('Time (s)');
