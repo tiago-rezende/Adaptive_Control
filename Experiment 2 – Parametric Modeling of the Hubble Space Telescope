@@ -1,0 +1,111 @@
+%%
+% Experiment 2 – Parametric Modeling of the Hubble Space Telescope
+clear
+close all
+
+%%
+% Defining the real system model
+k1 = 1;
+k2 = 12;
+k3 = 100;
+
+t = linspace(0, 5e7, 1000);
+r_t = 2.7 * cos(4e-7 * t);
+
+s = tf('s');
+Gs = 1 / (k1*s^2 + k2*s + k3);
+
+y = lsim(Gs, r_t, t);
+
+figure
+plot(t, r_t, 'r--', t, y, 'b', 'LineWidth', 1.5);
+legend('Input (u)', 'Output (y)');
+xlabel('Time (s)');
+ylabel('Amplitude');
+title('System Response');
+grid on;
+
+%%
+% (a) Parametric model with k1, k2, and k3 unknown
+
+lambda = 1; % Alternative: 5 * 4e-7
+Filter = 1 / (s + lambda)^2;
+
+accel_filtered = (s^2) * Filter;
+vel_filtered   = s * Filter;
+pos_filtered   = Filter;
+
+phi1 = lsim(accel_filtered, y, t);
+phi2 = lsim(vel_filtered, y, t);
+phi3 = lsim(pos_filtered, y, t);
+
+phi = [phi1, phi2, phi3];
+z = lsim(Filter, r_t, t);
+
+figure;
+subplot(2,1,1);
+plot(t, z, 'k', 'LineWidth', 1.5);
+title('Signal z');
+grid on;
+
+subplot(2,1,2);
+plot(t, phi);
+legend('\phi_1 (Acceleration)', '\phi_2 (Velocity)', '\phi_3 (Position)');
+title('Parameters \phi');
+grid on;
+xlabel('Time (s)');
+
+%%
+% (b) Alternative formulation: z = y / (s + lambda)^2
+
+accel_filtered = Filter / (s^2);
+vel_filtered   = Filter / s;
+pos_filtered   = Filter;
+
+phi1 = lsim(accel_filtered, r_t, t);
+phi2 = lsim(vel_filtered, r_t, t);
+phi3 = lsim(pos_filtered, r_t, t);
+
+phi = [phi1, phi2, phi3];
+z = lsim(Filter, y, t);
+
+figure;
+subplot(2,1,1);
+plot(t, z, 'k', 'LineWidth', 1.5);
+title('Signal z');
+grid on;
+
+subplot(2,1,2);
+plot(t, phi);
+legend('\phi_1 (Acceleration)', '\phi_2 (Velocity)', '\phi_3 (Position)');
+title('Parameters \phi');
+grid on;
+xlabel('Time (s)');
+
+%%
+% (c) Parametric model with known k2 = 12
+
+accel_filtered = (s^2) * Filter;
+vel_filtered   = s * Filter;
+pos_filtered   = Filter;
+
+r_f     = lsim(Filter, r_t, t);
+accel_f = lsim(accel_filtered, y, t);
+vel_f   = lsim(vel_filtered, y, t);
+pos_f   = lsim(pos_filtered, y, t);
+
+z = r_f - k2 * vel_f;
+phi = [accel_f, pos_f];
+
+figure;
+subplot(2,1,1);
+plot(t, z, 'k', 'LineWidth', 1.5);
+title('Signal z');
+grid on;
+
+subplot(2,1,2);
+plot(t, phi);
+legend('\phi_1 (Acceleration)', '\phi_3 (Position)');
+title('Parameters \phi');
+grid on;
+xlabel('Time (s)');
